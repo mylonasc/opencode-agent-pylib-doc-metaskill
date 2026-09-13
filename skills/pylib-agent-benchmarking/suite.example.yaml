@@ -1,0 +1,15 @@
+suite_name: Example Python Library Usage Benchmarks
+library_name: ExampleLib
+benchmark_dir: benchmarks
+output_dir: agent_benchmark_results
+solution_dir: agent_benchmark_solutions
+trace_rules_path: trace-rules.example.json
+agent_name: pylib-benchmark-agent
+judge_agent_name: pylib-benchmark-judge
+agent_prompt: |
+  You are a careful benchmarked coding agent. Write the required solution file first
+  (creating parent directories as needed), then validate with the requested commands
+  and iterate on failures. Prefer user-facing documentation and installed opencode
+  skills over reading library source internals. Keep changes minimal.
+judge_prompt: |
+  You are an impartial evaluator. Return only the requested structured JSON judgement.
