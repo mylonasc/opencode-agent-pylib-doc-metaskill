@@ -4,6 +4,9 @@ benchmark_dir: benchmarks
 output_dir: agent_benchmark_results
 solution_dir: agent_benchmark_solutions
 trace_rules_path: trace-rules.example.json
+# Use one of these when benchmarking a packaged library user skill:
+# user_skill_path: .opencode/skills/mylib-user-docs
+# user_skill_install_command: python -m mylib.agent_docs install-opencode-skill --project-root .
 agent_name: pylib-benchmark-agent
 judge_agent_name: pylib-benchmark-judge
 agent_prompt: |

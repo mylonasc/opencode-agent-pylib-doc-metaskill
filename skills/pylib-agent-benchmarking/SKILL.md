@@ -52,6 +52,18 @@ judge_prompt: |
 
 Paths are resolved relative to the suite config file unless absolute.
 
+## Bootstrap A Suite
+
+When no benchmark suite exists yet, first discover the library's real user workflows, then scaffold benchmarks around those workflows. Do this inside this benchmarking skill rather than creating a separate bootstrap skill.
+
+Read `references/bootstrap-suite.md` before creating or revising a suite. In short:
+
+- Inventory use cases from README quickstarts, `docs/` or Sphinx pages, notebooks, examples, tests, public docstrings, package exports, tutorials, and issue-like troubleshooting notes.
+- Prefer workflows that a real user would implement in a small standalone script: construct data, configure the library, call public APIs, inspect outputs, save/load, train/evaluate, or integrate with common optional dependencies.
+- Create one deterministic benchmark task per documented workflow the user skill claims to teach.
+- Make every task produce one file under `solution_dir`, validate with runnable commands, and restrict `allowed_paths` to the expected solution files.
+- Configure the suite to install the packaged user skill with `user_skill_path` or `user_skill_install_command`, and add trace rules for known failure modes such as wrong imports, source spelunking, deprecated APIs, or common shape/type mistakes.
+
 ## Task YAML
 
 Each file in `benchmark_dir` defines one benchmark:
