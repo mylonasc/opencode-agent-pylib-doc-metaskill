@@ -85,7 +85,37 @@ minimum_judge_score: 4
 - Tool call count, counts by tool, and ordered tool call trace.
 - Model, judge model, opencode version, suite version, task hash, commit hash, dirty status, and runner configuration.
 - Validation stdout/stderr, opencode event stream, optional session export, patch diff, trace bundle, trace analysis, and judge output.
-- JSONL, CSV, `summary.json`, optional `index.html`, and a local SQLite index.
+- JSONL, CSV, `summary.json`, `report-data.json`, optional `index.html`, and a local SQLite index.
+
+## Inspect Results
+
+Start with the generated summary and HTML report:
+
+```bash
+python -m json.tool agent_benchmark_results/summary.json
+open agent_benchmark_results/index.html
+```
+
+Browse the SQLite index with the bundled helper:
+
+```bash
+python skills/pylib-agent-benchmarking/scripts/browse_benchmark_db.py \
+  --db-path agent_benchmark_results/agent_benchmarks.sqlite recent --limit 20
+python skills/pylib-agent-benchmarking/scripts/browse_benchmark_db.py \
+  --db-path agent_benchmark_results/agent_benchmarks.sqlite remediation
+python skills/pylib-agent-benchmarking/scripts/browse_benchmark_db.py \
+  --db-path agent_benchmark_results/agent_benchmarks.sqlite artifacts <run-id>
+```
+
+Regenerate trace analysis after changing trace rules:
+
+```bash
+python skills/pylib-agent-benchmarking/scripts/inspect_agent_traces.py \
+  agent_benchmark_results \
+  --trace-rules path/to/trace-rules.json
+```
+
+Each run stores `opencode-events.jsonl`, optional `session-export.json`, `patch.diff`, validation output, `trace.json`, `trace-analysis.json`, and `judge.json`. Use `browse_benchmark_db.py artifacts <run-id>` to locate them.
 
 ## Trace Rules
 
@@ -103,6 +133,14 @@ Use `trace_rules_path` to add library-specific deterministic failure signals wit
 ```
 
 Supported `corpus` values are `solution`, `assistant`, `validation`, and `all`.
+
+## Modular Extension Points
+
+- Benchmark execution lives in `scripts/run_agent_benchmarks.py`.
+- Read-only result inspection lives in `scripts/benchmark_results.py`; swap or wrap this module for richer analytics without changing execution.
+- The SQLite browser CLI is `scripts/browse_benchmark_db.py`; replace it with a dashboard or notebook if needed.
+- The trace re-analysis CLI is `scripts/inspect_agent_traces.py`; trace rules are external JSON so library-specific signals stay out of runner code.
+- `report-data.json` is the stable frontend payload. The bundled `index.html` is a minimal default and can be replaced by a higher-quality frontend that consumes the same JSON.
 
 ## Workflow
 

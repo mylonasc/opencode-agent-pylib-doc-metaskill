@@ -302,6 +302,7 @@ class BenchmarkRunner:
         write_results(self.config.suite.output_dir, results)
         summary = summarize_results(results)
         summary["sqlite_db_path"] = str(self.config.suite.effective_db_path)
+        write_report_data(self.config.suite.output_dir, results, summary)
         (self.config.suite.output_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
         with BenchmarkDB(self.config.suite.effective_db_path) as db:
             db.upsert_results(results)
@@ -976,6 +977,18 @@ def render_html_report(output_dir: Path, results: list[BenchmarkResult], summary
     return output_path
 
 
+def write_report_data(output_dir: Path, results: list[BenchmarkResult], summary: dict[str, Any]) -> Path:
+    """Write frontend-neutral report data for custom dashboards.
+
+    The bundled HTML is intentionally simple. Higher-quality frontends can ignore
+    it and consume this stable JSON payload instead.
+    """
+    output_path = output_dir / "report-data.json"
+    payload = {"summary": summary, "results": [result.to_dict() for result in results]}
+    output_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    return output_path
+
+
 class BenchmarkDB:
     def __init__(self, db_path: Path) -> None:
         self.db_path = db_path
@@ -1020,7 +1033,18 @@ class BenchmarkDB:
             (result.run_id, result.suite_name, result.library_name, result.benchmark_id, result.benchmark_name, result.repetition, result.status, result.model, result.judge_model, result.benchmark_skill_version, result.benchmark_task_hash, result.repo_commit_hash, int(result.repo_dirty), result.opencode_version, result.parallelism_mode, int(result.auto_approve), result.run_started_at, result.run_finished_at, datetime.now(timezone.utc).isoformat(), result.wall_seconds, result.tokens_input, result.tokens_output, result.tokens_total, result.cost_usd, result.tool_call_count, json.dumps(result.tool_call_counts, sort_keys=True), result.validation.status, result.validation.command, result.validation.returncode, result.judge.status, result.judge.score, bool_or_none(result.judge.passed), result.analysis.summary, json.dumps(asdict(result.analysis), sort_keys=True), json.dumps(data, sort_keys=True), result.error),
         )
         self.conn.execute("DELETE FROM run_artifacts WHERE run_id = ?", (result.run_id,))
-        for kind, path in {"patch": result.patch_path, "events": result.events_path, "session_export": result.session_export_path, "trace": result.trace_path}.items():
+        artifacts = {
+            "run_dir": result.run_dir,
+            "worktree": result.worktree_path,
+            "patch": result.patch_path,
+            "events": result.events_path,
+            "session_export": result.session_export_path,
+            "trace": result.trace_path,
+            "validation_stdout": result.validation.stdout_path,
+            "validation_stderr": result.validation.stderr_path,
+            "judge_raw": result.judge.raw_output_path,
+        }
+        for kind, path in artifacts.items():
             if path:
                 self.conn.execute("INSERT OR REPLACE INTO run_artifacts(run_id, kind, path) VALUES (?, ?, ?)", (result.run_id, kind, path))
         self.conn.execute("DELETE FROM remediation_actions WHERE run_id = ?", (result.run_id,))
@@ -1029,6 +1053,42 @@ class BenchmarkDB:
             self.conn.execute("INSERT OR REPLACE INTO remediation_actions(run_id, action, documentation_gap) VALUES (?, ?, ?)", (result.run_id, action, gap))
         if commit:
             self.conn.commit()
+
+    def recent_runs(self, limit: int = 20, status: str | None = None) -> list[sqlite3.Row]:
+        self.conn.row_factory = sqlite3.Row
+        where = "WHERE status = ?" if status else ""
+        params: tuple[object, ...] = (status, limit) if status else (limit,)
+        return list(
+            self.conn.execute(
+                f"""
+                SELECT run_started_at, run_id, suite_name, library_name, benchmark_id, status,
+                       model, repo_commit_hash, tokens_total, tool_call_count, analysis_summary
+                FROM benchmark_runs
+                {where}
+                ORDER BY COALESCE(run_started_at, ingested_at) DESC
+                LIMIT ?
+                """,
+                params,
+            )
+        )
+
+    def remediation_summary(self) -> list[sqlite3.Row]:
+        self.conn.row_factory = sqlite3.Row
+        return list(
+            self.conn.execute(
+                """
+                SELECT action, COUNT(*) AS occurrences, GROUP_CONCAT(DISTINCT benchmark_id) AS benchmarks
+                FROM remediation_actions
+                JOIN benchmark_runs USING (run_id)
+                GROUP BY action
+                ORDER BY occurrences DESC, action ASC
+                """
+            )
+        )
+
+    def artifacts_for_run(self, run_id: str) -> list[sqlite3.Row]:
+        self.conn.row_factory = sqlite3.Row
+        return list(self.conn.execute("SELECT kind, path FROM run_artifacts WHERE run_id = ? ORDER BY kind", (run_id,)))
 
 
 def combined_status(opencode_returncode: int, validation: ValidationResult, judge: JudgeResult) -> str:
