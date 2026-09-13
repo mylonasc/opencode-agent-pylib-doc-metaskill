@@ -2,8 +2,9 @@
 
 Reusable opencode skills for making Python libraries easier for coding agents to use correctly, then measuring whether the documentation actually improves agent performance.
 
-The repository has two complementary skills:
+The repository has three complementary skills:
 
+- `skills/pylib-user-docs-bootstrap-skill/` bootstraps a Python library repo with the basic packaged agent-docs features expected by `pylib-user-skill`.
 - `skills/pylib-user-skill/` teaches maintainers how to ship a library-specific opencode user skill with their Python package.
 - `skills/pylib-agent-benchmarking/` runs agentic coding benchmarks that measure whether agents can use a library's public APIs from documentation, examples, and skills with fewer failures and fewer tokens.
 
@@ -21,6 +22,21 @@ This repo captures that loop in reusable form:
 4. Validate generated code deterministically.
 5. Collect token usage, tool usage, patches, traces, and judge scores.
 6. Convert repeated failure modes into documentation fixes.
+
+## Skill: `pylib-user-docs-bootstrap-skill`
+
+Use `skills/pylib-user-docs-bootstrap-skill/` when a Python library does not yet have agent-facing docs infrastructure.
+
+It describes how to add the minimum working features expected by `pylib-user-skill`:
+
+- A packaged `agent_skill/` directory with `SKILL.md`, topic references, and generated `api_index.json`.
+- A zero-extra-dependency retrieval CLI such as `python -m <pkg>.agent_docs`.
+- `list`, `get`, `search`, and `install-opencode-skill` commands.
+- An AST API-index generator with an index freshness check.
+- Tests for topic retrieval, API-card search, installer overwrite safety, and freshness.
+- Import-time dependency guardrails so docs tooling can run before optional runtime dependencies are installed.
+
+Start here when bootstrapping a repo from no agent docs to a basic, installable, testable docs skill. Then use `pylib-user-skill` for completeness and benchmark-driven refinement.
 
 ## Skill: `pylib-user-skill`
 

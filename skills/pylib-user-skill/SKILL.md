@@ -7,6 +7,8 @@ description: Use when shipping a user-assistant skill with a Python library so o
 
 Use this skill when adding a user-assistant skill to a Python library: a packaged skill directory, a zero-dependency retrieval CLI, and an auto-generated API index, verified by tests, drift checks, and agentic benchmarks.
 
+If the target repo has none of this infrastructure yet, use `pylib-user-docs-bootstrap-skill` first to scaffold the minimum working docs features, then return here for the full quality loop.
+
 ## Design Principle
 
 Agent runs are reasoning-dominated (~18k tokens per agent step in our measurements). Tool calls are cheap; thinking is expensive. Every decision below serves one goal: **first-try-correct code**. An agent that copies a working example costs ~50k tokens; one that debugs an undocumented gotcha costs ~450k.
